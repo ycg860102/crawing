@@ -8,6 +8,12 @@ import requests, json, time, sys,datetime,os
 from bs4 import BeautifulSoup
 from contextlib import closing
 import pandas as pd 
+import re
+#from lxml import html
+import mail2
+import ConfigParser
+reload(sys)    
+sys.setdefaultencoding('utf8')
 
 class pdgzfDownloader():
     
@@ -60,7 +66,20 @@ class pdgzfDownloader():
         #html = BeautifulSoup(req.text)
         return req.text
          
+def sendMail(text,filepath):
+    subject = u'浦东公租房信息'
+    #text = u'上市公司公告信息，敬请查收附件，谢谢！' 
     
+    cf=ConfigParser.ConfigParser()
+    cf.read('passwd.ini')  #读配置文件（ini、conf）返回结果是列表 
+    username = cf.get('passwdini','username') #获取邮箱账号       
+    password = cf.get('passwdini','password') #获取邮箱密码     
+    senderMail = cf.get('passwdini','senderMail') #获取发件箱
+    cclist = []
+    maillist= ['yangchg@scfund.com.cn','ycg860102@163.com','guyunxiaodecanlan@163.com']
+    filelist = [filepath]
+    mail2.send_mail(senderMail, maillist,subject,text,filelist,cclist,'smtp.163.com', username, password)        #发送
+
 
 if __name__ == '__main__':
     
@@ -76,19 +95,23 @@ if __name__ == '__main__':
     url = 'http://rent.pdgzf.com/api/PStruct/QueryGZFPStruct'
     downloader = pdgzfDownloader(url)
     context = downloader.getContext(url)
+    #如果爬取到了json数据，则对数据进行处理，并和上次爬取的数据比对，看是否有新增房源，如果有新增房源则将信息展示，并将所有小区房源信息发送
     jsonData = json.loads(context).get('Data',None)
-    if jsonData :
+    if jsonData : 
         rows = jsonData.get('Rows',None)
         if rows :
             dfData = pd.DataFrame(rows)
             cols = ['name','roomcount','townshipname']
             dfData = dfData[cols]
-            if not beforeData :
+            if not beforeData.empty :
                 newHouseSet = set(dfData.name).difference(set(beforeData.name))
                 newHouseinfo = dfData[dfData.name.isin(newHouseSet)]
             else :
                 newHouseinfo = dfData
             dfData[cols].to_excel("pdgzf.xlsx")
+            if len(newHouseSet)>0 :
+                text = u"新增 "+str(len(newHouseSet))+" 个小区公租房房源信息："+",".join(newHouseinfo.name+ " " +newHouseinfo.townshipname)
+                sendMail(text,"pdgzf.xlsx") 
             
             
 
