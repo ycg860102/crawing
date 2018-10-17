@@ -104,5 +104,9 @@ venv.bak/
 .mypy_cache/
 
 # passwd
+<<<<<<< HEAD
 passwd.txt
 passwd.ini
+=======
+passwd.ini
+>>>>>>> 69bf42b45ab2ce9734d9d725417061fdf03e8b6f
