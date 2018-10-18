@@ -9,11 +9,29 @@ from bs4 import BeautifulSoup
 from contextlib import closing
 import pandas as pd 
 import re
+import schedule
 #from lxml import html
 import mail2
 import ConfigParser
 reload(sys)    
 sys.setdefaultencoding('utf8')
+
+import logging
+
+now = datetime.datetime.now()
+today = now.strftime('%Y%m%d')
+logger = logging.getLogger(__name__)
+logger.setLevel(level = logging.INFO)
+handler = logging.FileHandler("pdgzf_"+today+".log")
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+
+logger.addHandler(handler)
+logger.addHandler(console)
 
 class pdgzfDownloader():
     
@@ -81,8 +99,8 @@ def sendMail(text,filepath):
     mail2.send_mail(senderMail, maillist,subject,text,filelist,cclist,'smtp.163.com', username, password)        #发送
 
 
-if __name__ == '__main__':
-    
+def main():
+    logger.info(u"开始执行Main函数！".encode('GBK'))
     now = datetime.datetime.now()
     today = now.strftime('%Y%m%d')
     
@@ -99,7 +117,7 @@ if __name__ == '__main__':
     jsonData = json.loads(context).get('Data',None)
     if jsonData : 
         rows = jsonData.get('Rows',None)
-        if rows :
+        if rows : 
             dfData = pd.DataFrame(rows)
             cols = ['name','roomcount','townshipname']
             dfData = dfData[cols]
@@ -112,9 +130,19 @@ if __name__ == '__main__':
             if len(newHouseSet)>0 :
                 text = u"新增 "+str(len(newHouseSet))+" 个小区公租房房源信息："+",".join(newHouseinfo.name+ " " +newHouseinfo.townshipname)
                 sendMail(text,"pdgzf.xlsx") 
-            
-            
+                logger.info(u"有新增房源，发送邮件成功！".encode('GBK'))
 
+
+if __name__ == '__main__':
+    
+    schedule.every().minutes.do(main)
+    
+    while True:
+        logger.info(u"开始执行！！！".encode('GBK'))
+        #schedule.run_pending()
+        main()
+        time.sleep(60)
+        logger.info(u"执行结束！！！".encode('GBK'))
 
     #allDataFrame.describe()
     
